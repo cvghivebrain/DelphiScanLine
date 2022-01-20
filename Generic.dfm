@@ -1,7 +1,7 @@
 object Form1: TForm1
   Left = 192
   Top = 124
-  Caption = 'Form1'
+  Caption = 'DelphiScanLine'
   ClientHeight = 636
   ClientWidth = 1289
   Color = clBtnFace
