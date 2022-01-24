@@ -23,7 +23,7 @@ type
     procedure DrawBoxFill(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h: integer);  
     procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
     procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
-    procedure FillScreen(r, g, b, a: byte);
+    procedure FillScreen(r, g, b: byte);
   public
     { Public declarations }
   end;
@@ -53,9 +53,7 @@ begin
   imgMain.Height := visibleheight;
   pixelarray := imgMain.Picture.Bitmap.ScanLine[0]; // Get pointer for pixels.
   scanwidth := Longint(imgMain.Picture.Bitmap.ScanLine[1])-Longint(pixelarray); // Get scanline width (+ padding).
-  DrawBoxFill2(0,192,0,255,255,0,255,128,450,0,200,200,3);
-  DrawBox2(0,0,0,255,100,10,100,50,5);
-  FillScreen(0,0,0,255);
+  FillScreen(0,0,0);
 end;
 
 procedure TForm1.FormResize(Sender: TObject);
@@ -64,7 +62,7 @@ begin
   visibleheight := Form1.ClientHeight;
   imgMain.Width := visiblewidth;
   imgMain.Height := visibleheight;
-  FillScreen(0,0,0,255);
+  FillScreen(0,0,0);
   DrawRect(0,255,0,255,0,0,50,50);
   DrawRect(0,255,0,255,visiblewidth-50,visibleheight-50,50,50);
 end;
@@ -255,10 +253,10 @@ begin
   DrawRect(r2, g2, b2, a2, x+t, y+t, w-(t shl 1), h-(t shl 1)); // Fill it.
 end;
 
-procedure TForm1.FillScreen(r, g, b, a: byte); // Fill screen with one colour.
+procedure TForm1.FillScreen(r, g, b: byte); // Fill screen with one colour.
 var i: integer;
 begin
-  DrawHLine(r, g, b, a, 0, 0, visiblewidth); // Fill first visible line.
+  DrawHLine(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
   for i := 1 to (visibleheight-1) do // Copy visible lines.
     Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth shl 2));
 end;
