@@ -16,7 +16,8 @@ type
     procedure DrawPixel(r, g, b, a: byte; x, y: integer);
     procedure GetPixel(x, y: integer);
     function AlphaBlend(c1, a1, c2: integer): byte;
-    procedure DrawHLine(r, g, b, a: byte; x, y, w: integer);  
+    procedure DrawHLine(r, g, b, a: byte; x, y, w: integer);
+    procedure DrawHLineNow(r, g, b, a: byte; x, y, w: integer);
     procedure DrawVLine(r, g, b, a: byte; x, y, h: integer);  
     procedure DrawRect(r, g, b, a: byte; x, y, w, h: integer);
     procedure DrawBox(r, g, b, a: byte; x, y, w, h: integer);   
@@ -32,7 +33,7 @@ var
   Form1: TForm1;
   pixelarray: PByteArray;
   scanwidth, actualwidth, actualheight, visiblewidth, visibleheight: integer;
-  readpixel: array[0..3] of byte;
+  readpixel: array[0..2] of byte;
 
 implementation
 
@@ -42,7 +43,7 @@ implementation
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  imgMain.Picture.Bitmap.PixelFormat := pf32bit; // Set main bitmap to 32-bit RGBA.
+  imgMain.Picture.Bitmap.PixelFormat := pf24bit; // Set main bitmap to 32-bit RGBA.
   actualwidth := Screen.Width; // Set dimensions to match the screen.
   actualheight := Screen.Height;
   visiblewidth := Form1.ClientWidth; // Set boundaries to match window.
@@ -63,8 +64,8 @@ begin
   imgMain.Width := visiblewidth;
   imgMain.Height := visibleheight;
   FillScreen(0,0,0);
-  DrawRect(0,255,0,255,0,0,50,50);
-  DrawRect(0,255,0,255,visiblewidth-50,visibleheight-50,50,50);
+  DrawBoxFill2(0,255,0,255,255,0,0,128,0,0,50,50,3);
+  DrawBoxFill2(0,255,0,128,0,0,255,192,visiblewidth-50,visibleheight-50,50,50,2);
 end;
 
 { Pixel operations. }
@@ -72,31 +73,28 @@ end;
 procedure TForm1.DrawPixel(r, g, b, a: byte; x, y: integer); // Draw single pixel.
 var p: integer;
 begin
-  p := (y*scanwidth)+(x shl 2); // Find address for pixel.    
+  p := (y*scanwidth)+(x*3); // Find address for pixel.
   if a = 255 then // Check alpha value (255 is opaque).
     begin
     pixelarray[p] := b; // Write pixel data.
     pixelarray[p+1] := g;
     pixelarray[p+2] := r;
-    pixelarray[p+3] := 255;
     end
   else
     begin
     pixelarray[p] := AlphaBlend(b, a, pixelarray[p]); // Write pixel data.
     pixelarray[p+1] := AlphaBlend(g, a, pixelarray[p+1]);
     pixelarray[p+2] := AlphaBlend(r, a, pixelarray[p+2]);
-    pixelarray[p+3] := 255;
     end;
 end;
 
 procedure TForm1.GetPixel(x, y: integer); // Copy RBGA values of specified pixel to array.
 var p: integer;
 begin
-  p := (y*scanwidth)+(x shl 2); // Find address for pixel.
+  p := (y*scanwidth)+(x*3); // Find address for pixel.
   readpixel[0] := pixelarray[p]; // Copy blue value.
   readpixel[1] := pixelarray[p+1]; // Copy green value.
   readpixel[2] := pixelarray[p+2]; // Copy red value.
-  readpixel[3] := pixelarray[p+3]; // Copy alpha value.
 end;
 
 function TForm1.AlphaBlend(c1, a1, c2: integer): byte; // Blend two colour values with alpha.
@@ -105,70 +103,72 @@ begin
 end;
 
 procedure TForm1.DrawHLine(r, g, b, a: byte; x, y, w: integer); // Draw horizontal line.
-var p, i: integer;
 begin
   if w < 0 then // Check if width is negative.
     begin
     x := x+w; // Flip.
     w := abs(w); // Make positive.
     end;
-  if x+w > actualwidth then w := actualwidth-x; // Trim line if it overflows.
+  if x+w > visiblewidth then w := visiblewidth-x; // Trim line if it overflows.
   if x < 0 then // Check if position is negative.
     begin
     w := w+x; // Trim line.
     x := 0; // Align to edge.
     end;
-  if (y > actualheight) or (y < 0) then
+  if (y > visibleheight) or (y < 0) then
     begin
     w := 0;
     y := 0;
     end;
-  p := (y*scanwidth)+(x shl 2); // Find address for pixel.
+  DrawHLineNow(r,g,b,a,x,y,w); // Draw line with revised position & width.
+end;
+
+procedure TForm1.DrawHLineNow(r, g, b, a: byte; x, y, w: integer); // Draw horizontal line without overflow checks.
+var p, i: integer;
+begin
+  p := (y*scanwidth)+(x*3); // Find address for pixel.
   if a = 255 then // Check alpha value (255 is opaque).
     for i := 0 to (w-1) do
       begin
-      pixelarray[p+(i shl 2)] := b; // Write pixel data.
-      pixelarray[p+1+(i shl 2)] := g;
-      pixelarray[p+2+(i shl 2)] := r;
-      pixelarray[p+3+(i shl 2)] := 255;
+      pixelarray[p+(i*3)] := b; // Write pixel data.
+      pixelarray[p+1+(i*3)] := g;
+      pixelarray[p+2+(i*3)] := r;
       end
   else
     for i := 0 to (w-1) do
       begin
-      pixelarray[p+(i shl 2)] := AlphaBlend(b, a, pixelarray[p+(i shl 2)]); // Write pixel data.
-      pixelarray[p+1+(i shl 2)] := AlphaBlend(g, a, pixelarray[p+1+(i shl 2)]);
-      pixelarray[p+2+(i shl 2)] := AlphaBlend(r, a, pixelarray[p+2+(i shl 2)]);
-      pixelarray[p+3+(i shl 2)] := 255;
+      pixelarray[p+(i*3)] := AlphaBlend(b, a, pixelarray[p+(i*3)]); // Write pixel data.
+      pixelarray[p+1+(i*3)] := AlphaBlend(g, a, pixelarray[p+1+(i*3)]);
+      pixelarray[p+2+(i*3)] := AlphaBlend(r, a, pixelarray[p+2+(i*3)]);
       end;
 end;
 
 procedure TForm1.DrawVLine(r, g, b, a: byte; x, y, h: integer); // Draw vertical line.
 var p, i: integer;
-begin   
+begin
   if h < 0 then // Check if height is negative.
     begin
     y := y+h; // Flip.
     h := abs(h); // Make positive.
     end;
-  if y+h > actualheight then h := actualheight-y; // Trim line if it overflows.
+  if y+h > visibleheight then h := visibleheight-y; // Trim line if it overflows.
   if y < 0 then // Check if position is negative.
     begin
     h := h+y; // Trim line.
     y := 0; // Align to edge.
     end;
-  if (x > actualwidth) or (x < 0) then
+  if (x > visiblewidth) or (x < 0) then
     begin
     h := 0;
     x := 0;
     end;
-  p := (y*scanwidth)+(x shl 2); // Find address for pixel.
+  p := (y*scanwidth)+(x*3); // Find address for pixel.
   if a = 255 then // Check alpha value (255 is opaque).
     for i := 0 to (h-1) do
       begin
       pixelarray[p] := b; // Write pixel data.
       pixelarray[p+1] := g;
       pixelarray[p+2] := r;
-      pixelarray[p+3] := 255;
       p := p+scanwidth; // Jump to next scanline, same y position.
       end
   else
@@ -177,13 +177,12 @@ begin
       pixelarray[p] := AlphaBlend(b, a, pixelarray[p]); // Write pixel data.
       pixelarray[p+1] := AlphaBlend(g, a, pixelarray[p+1]);
       pixelarray[p+2] := AlphaBlend(r, a, pixelarray[p+2]);
-      pixelarray[p+3] := 255;
       p := p+scanwidth; // Jump to next scanline, same y position.
       end;
 end;
 
 procedure TForm1.DrawRect(r, g, b, a: byte; x, y, w, h: integer); // Draw solid rectangle.
-var p, i, j: integer;
+var i: integer;
 begin
   if x < 0 then // Check if position is negative.
     begin
@@ -195,33 +194,9 @@ begin
     h := h+y;
     y := 0;
     end;
-  if x+w > actualwidth then w := actualwidth-x; // Trim rectangle if it overflows.
-  if y+h > actualheight then h := actualheight-y;  
-  p := (y*scanwidth)+(x shl 2); // Find address for 1st pixel.
-  if a = 255 then // Check alpha value (255 is opaque).
-    for i := 0 to (h-1) do
-      begin
-      for j := 0 to (w-1) do
-        begin
-        pixelarray[p+(j shl 2)] := b; // Write pixel data.
-        pixelarray[p+1+(j shl 2)] := g;
-        pixelarray[p+2+(j shl 2)] := r;
-        pixelarray[p+3+(j shl 2)] := 255;
-        end;
-      p := p+scanwidth; // Jump to next scanline, same y position.
-      end
-  else
-    for i := 0 to (h-1) do
-      begin
-      for j := 0 to (w-1) do
-        begin
-        pixelarray[p+(j shl 2)] := AlphaBlend(b, a, pixelarray[p+(j shl 2)]); // Write pixel data.
-        pixelarray[p+1+(j shl 2)] := AlphaBlend(g, a, pixelarray[p+1+(j shl 2)]);
-        pixelarray[p+2+(j shl 2)] := AlphaBlend(r, a, pixelarray[p+2+(j shl 2)]);
-        pixelarray[p+3+(j shl 2)] := 255;
-        end;
-      p := p+scanwidth; // Jump to next scanline, same y position.
-      end;
+  if x+w > visiblewidth then w := visiblewidth-x; // Trim rectangle if it overflows.
+  if y+h > visibleheight then h := visibleheight-y;
+  for i := 0 to (h-1) do DrawHLineNow(r,g,b,a,x,y+i,w); // Draw rectangle out of series of lines.
 end;
 
 procedure TForm1.DrawBox(r, g, b, a: byte; x, y, w, h: integer); // Draw empty box.
@@ -258,7 +233,7 @@ var i: integer;
 begin
   DrawHLine(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
   for i := 1 to (visibleheight-1) do // Copy visible lines.
-    Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth shl 2));
+    Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth*3));
 end;
 
 end.
