@@ -231,7 +231,7 @@ end;
 procedure TForm1.FillScreen(r, g, b: byte); // Fill screen with one colour.
 var i: integer;
 begin
-  DrawHLine(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
+  DrawHLineNow(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
   for i := 1 to (visibleheight-1) do // Copy visible lines.
     Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth*3));
 end;
