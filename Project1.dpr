@@ -2,7 +2,8 @@ program Project1;
 
 uses
   Forms,
-  Generic in 'Generic.pas' {Form1};
+  Generic in 'Generic.pas' {Form1},
+  ScanLineFunc in 'ScanLineFunc.pas';
 
 {$R *.res}
 
