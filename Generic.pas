@@ -19,7 +19,6 @@ type
 
 var
   Form1: TForm1;
-  sprites: TPNGImage;
 
 implementation
 
@@ -38,10 +37,11 @@ begin
   FillScreen(0,0,0);
   DrawBoxFill2(0,255,0,255,255,0,0,128,0,0,50,50,3);
   DrawBoxFill2(0,255,0,128,0,0,255,192,visiblewidth-50,visibleheight-50,50,50,2);
-  DrawPNG(0,0,80,80,100,100,0);
-  DrawPNG(160,0,80,80,140,140,3);
-  DrawPNG(0,0,80,80,200,200,1);
-  DrawPNG(80,0,80,80,240,240,2);
+  DrawPNG(0,0,80,80,0,100,2,4,0);
+  DrawPNG(160,0,80,80,140,140,1,1,3);
+  DrawPNG(0,0,80,80,200,200,1,1,1);
+  DrawPNG(80,0,80,80,24,240,-1,-1,2);
+  DrawPNG(0,0,80,80,400,400,-2,-2,0);
 end;
 
 end.

@@ -19,7 +19,7 @@ procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
-procedure DrawPNG(x1, y1, w, h, x2, y2, t: integer);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
 
 var
   pic: TImage;
@@ -66,18 +66,19 @@ procedure DrawPixel(r, g, b, a: byte; x, y: integer);
 var p: integer;
 begin
   p := (y*scanwidth)+(x*3); // Find address for pixel.
-  if a = 255 then // Check alpha value (255 is opaque).
-    begin
-    pixelarray[p] := b; // Write pixel data.
-    pixelarray[p+1] := g;
-    pixelarray[p+2] := r;
-    end
-  else
-    begin
-    pixelarray[p] := AlphaBlend(b, a, pixelarray[p]); // Write pixel data.
-    pixelarray[p+1] := AlphaBlend(g, a, pixelarray[p+1]);
-    pixelarray[p+2] := AlphaBlend(r, a, pixelarray[p+2]);
-    end;
+  if (x>-1) and (y>-1) and (x<visiblewidth) and (y<visibleheight) then
+    if a = 255 then // Check alpha value (255 is opaque).
+      begin
+      pixelarray[p] := b; // Write pixel data.
+      pixelarray[p+1] := g;
+      pixelarray[p+2] := r;
+      end
+    else
+      begin
+      pixelarray[p] := AlphaBlend(b, a, pixelarray[p]); // Write pixel data.
+      pixelarray[p+1] := AlphaBlend(g, a, pixelarray[p+1]);
+      pixelarray[p+2] := AlphaBlend(r, a, pixelarray[p+2]);
+      end;
 end;
 
 { Copy RBGA values of specified pixel to array. }
@@ -266,8 +267,8 @@ end;
 
 { Draw section of PNG on screen. }
 
-procedure DrawPNG(x1, y1, w, h, x2, y2, t: integer);
-var i, r, g, b, a, x, y: integer;
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
+var i, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
   p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
@@ -290,7 +291,16 @@ begin
         else a := 255;
       else a := 255; // Default no transparency.
     end;
-    DrawPixel(r,g,b,a,x2+(i mod w),y2+(i div w));
+    if sx=1 then xpx := i mod w;
+    if sx=-1 then xpx := w-(i mod w);
+    if sy=1 then ypx := i div w;
+    if sy=-1 then ypx := h-(i div w);
+    if sx>1 then xpx := (i mod w)*sx;
+    if sx<-1 then xpx := (w-(i mod w))*Abs(sx);
+    if sy>1 then ypx := (i div w)*sy;
+    if sy<-1 then ypx := (h-(i div w))*Abs(sy);
+    if (Abs(sx)=1) and (Abs(sy)=1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
+    else DrawRect(r,g,b,a,x2+xpx,y2+ypx,Abs(sx),Abs(sy));
     end;
 end;
 
