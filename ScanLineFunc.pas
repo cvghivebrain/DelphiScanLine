@@ -2,7 +2,7 @@ unit ScanLineFunc;
 
 interface
 
-uses Forms, Graphics, ExtCtrls, SysUtils;
+uses Forms, Graphics, ExtCtrls, SysUtils, pngimage, Windows;
 
 procedure InitImage(frm: TForm; img: TImage);
 procedure MatchWindow;
@@ -18,6 +18,8 @@ procedure DrawBoxFill(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h: integer);
 procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
+procedure LoadSheet(f: string);
+procedure DrawPNG(x1, y1, w, h, x2, y2, t: integer);
 
 var
   pic: TImage;
@@ -25,6 +27,10 @@ var
   pixelarray: PByteArray;
   scanwidth, actualwidth, actualheight, visiblewidth, visibleheight: integer;
   readpixel: array[0..2] of byte;
+  PNG: TPNGImage;
+  alpha: PByteArray;
+  alphawidth: integer;
+  alphachk: boolean;
 
 implementation
 
@@ -240,6 +246,52 @@ begin
   DrawHLineNow(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
   for i := 1 to (visibleheight-1) do // Copy visible lines.
     Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth*3));
+end;
+
+{ Load PNG. }
+
+procedure LoadSheet(f: string);
+begin
+  PNG.Free; // Clear previous PNG.
+  PNG := TPNGImage.Create; // Initialise PNG.
+  PNG.LoadFromFile(f); // Load new PNG.
+  if PNG.Header.ColorType = COLOR_RGBALPHA or COLOR_GRAYSCALEALPHA then // Check if PNG has an alpha channel.
+    begin
+    alpha := PNG.AlphaScanline[0]; // Pointer for alpha channel.
+    alphawidth := Longint(PNG.AlphaScanline[1])-Longint(alpha); // Size of alpha for one line.
+    alphachk := true;
+    end
+  else alphachk := false;
+end;
+
+{ Draw section of PNG on screen. }
+
+procedure DrawPNG(x1, y1, w, h, x2, y2, t: integer);
+var i, r, g, b, a, x, y: integer;
+  p, p1, p2: TColor;
+begin
+  p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
+  p2 := PNG.Pixels[x1,y1]; // Get pixel on top left of section.
+  for i := 0 to (w*h)-1 do
+    begin
+    x := x1+(i mod w); // Get position on PNG.
+    y := y1+(i div w);
+    p := PNG.Pixels[x,y]; // Get pixel as TColor.
+    r := GetRValue(p); // Get RGB values.
+    g := GetGValue(p);
+    b := GetBValue(p);
+    case t of
+      1: // Use pixel 0,0 as transparent.
+        if p = p1 then a := 0 else a := 255;
+      2: // Use pixel 0,0 in section as transparent.
+        if p = p2 then a := 0 else a := 255;
+      3: // Use alpha transparency.
+        if alphachk = true then a := alpha[(y*alphawidth)+x] // Get alpha value.
+        else a := 255;
+      else a := 255; // Default no transparency.
+    end;
+    DrawPixel(r,g,b,a,x2+(i mod w),y2+(i div w));
+    end;
 end;
 
 end.

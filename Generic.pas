@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StrUtils, ExtCtrls, StdCtrls, ScanLineFunc;
+  Dialogs, StrUtils, ExtCtrls, StdCtrls, ScanLineFunc, pngimage;
 
 type
   TForm1 = class(TForm)
@@ -19,6 +19,7 @@ type
 
 var
   Form1: TForm1;
+  sprites: TPNGImage;
 
 implementation
 
@@ -28,6 +29,7 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   InitImage(Form1,imgMain); // Set image width & height to match form.
   FillScreen(0,0,0);
+  LoadSheet(ExtractFilePath(Application.ExeName)+'test.png');
 end;
 
 procedure TForm1.FormResize(Sender: TObject);
@@ -36,6 +38,10 @@ begin
   FillScreen(0,0,0);
   DrawBoxFill2(0,255,0,255,255,0,0,128,0,0,50,50,3);
   DrawBoxFill2(0,255,0,128,0,0,255,192,visiblewidth-50,visibleheight-50,50,50,2);
+  DrawPNG(0,0,80,80,100,100,0);
+  DrawPNG(160,0,80,80,140,140,3);
+  DrawPNG(0,0,80,80,200,200,1);
+  DrawPNG(80,0,80,80,240,240,2);
 end;
 
 end.
