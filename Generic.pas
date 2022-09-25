@@ -34,7 +34,7 @@ end;
 procedure TForm1.FormResize(Sender: TObject);
 begin
   MatchWindow; // Set boundaries to match window.
-  FillScreen(0,0,0);
+  FillScreen(255,128,0);
   DrawBoxFill2(0,255,0,255,255,0,0,128,0,0,50,50,3);
   DrawBoxFill2(0,255,0,128,0,0,255,192,visiblewidth-50,visibleheight-50,50,50,2);
   DrawPNG(0,0,80,80,0,100,2,4,0);
@@ -42,6 +42,7 @@ begin
   DrawPNG(0,0,80,80,200,200,1,1,1);
   DrawPNG(80,0,80,80,24,240,-1,-1,2);
   DrawPNG(0,0,80,80,400,400,-2,-2,0);
+  DrawWholePNG(600,200,1,1,0);
 end;
 
 end.

@@ -20,6 +20,7 @@ procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer)
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
+procedure DrawWholePNG(x, y, sx, sy, t: integer);
 
 var
   pic: TImage;
@@ -291,17 +292,20 @@ begin
         else a := 255;
       else a := 255; // Default no transparency.
     end;
-    if sx=1 then xpx := i mod w;
-    if sx=-1 then xpx := w-(i mod w);
-    if sy=1 then ypx := i div w;
-    if sy=-1 then ypx := h-(i div w);
-    if sx>1 then xpx := (i mod w)*sx;
-    if sx<-1 then xpx := (w-(i mod w))*Abs(sx);
-    if sy>1 then ypx := (i div w)*sy;
-    if sy<-1 then ypx := (h-(i div w))*Abs(sy);
+    if sx>0 then xpx := (i mod w)*sx // Set relative position of pixel.
+    else xpx := (w-(i mod w))*Abs(sx);
+    if sy>0 then ypx := (i div w)*sy
+    else ypx := (h-(i div w))*Abs(sy);
     if (Abs(sx)=1) and (Abs(sy)=1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
     else DrawRect(r,g,b,a,x2+xpx,y2+ypx,Abs(sx),Abs(sy));
     end;
+end;
+
+{ Draw whole PNG on screen. }
+
+procedure DrawWholePNG(x, y, sx, sy, t: integer);
+begin
+  DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t);
 end;
 
 end.
