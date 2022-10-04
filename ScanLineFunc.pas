@@ -21,6 +21,8 @@ procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
 procedure DrawWholePNG(x, y, sx, sy, t: integer);
+procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
+procedure ClearPNGReplace;
 
 var
   pic: TImage;
@@ -31,7 +33,8 @@ var
   PNG: TPNGImage;
   alpha: PByteArray;
   alphawidth: integer;
-  alphachk: boolean;
+  alphachk, replacechk: boolean;
+  incolor, outcolor: TColor;
 
 implementation
 
@@ -264,6 +267,7 @@ begin
     alphachk := true;
     end
   else alphachk := false;
+  replacechk := false;
 end;
 
 { Draw section of PNG on screen. }
@@ -279,6 +283,7 @@ begin
     x := x1+(i mod w); // Get position on PNG.
     y := y1+(i div w);
     p := PNG.Pixels[x,y]; // Get pixel as TColor.
+    if (replacechk = true) and (p = incolor) then p := outcolor; // Replace colour.
     r := GetRValue(p); // Get RGB values.
     g := GetGValue(p);
     b := GetBValue(p);
@@ -306,6 +311,20 @@ end;
 procedure DrawWholePNG(x, y, sx, sy, t: integer);
 begin
   DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t);
+end;
+
+{ Set colour replacement. Only supports a single colour. }
+
+procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
+begin
+  replacechk := true;
+  incolor := r1 or (g1 shl 8) or (b1 shl 16); // Convert RGB to TColor.
+  outcolor := r2 or (g2 shl 8) or (b2 shl 16);
+end;
+
+procedure ClearPNGReplace;
+begin
+  replacechk := false;
 end;
 
 end.
