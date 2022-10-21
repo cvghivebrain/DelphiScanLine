@@ -44,6 +44,9 @@ begin
   DrawPNG(0,0,80,80,400,400,-2,-2,0,0,255);
   SetPNGReplace(0,0,0,255,0,0);
   DrawWholePNG(600,200,1,1,0,1,128);
+  DrawLine(0,0,0,100,200,20,220,200);
+  DrawLine(0,255,255,255,500,500,100,1);
+  DrawLine(255,255,255,255,0,0,visiblewidth-50,visibleheight-50);
 end;
 
 end.

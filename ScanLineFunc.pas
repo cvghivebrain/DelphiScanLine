@@ -2,7 +2,7 @@ unit ScanLineFunc;
 
 interface
 
-uses Forms, Graphics, ExtCtrls, SysUtils, pngimage, Windows;
+uses Forms, Graphics, ExtCtrls, SysUtils, pngimage, Windows, Math;
 
 procedure InitImage(frm: TForm; img: TImage);
 procedure MatchWindow;
@@ -19,9 +19,10 @@ procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep, opa: integer);
-procedure DrawWholePNG(x, y, sx, sy, t, rep, opa: integer);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep: integer; opa: byte);
+procedure DrawWholePNG(x, y, sx, sy, t, rep: integer; opa: byte);
 procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
+procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
 
 var
   pic: TImage;
@@ -277,7 +278,7 @@ end;
     rep: Replace colour as defined by SetPNGReplace
     opa: Opacity (0 = 0%; 255 = 100%) }
 
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep, opa: integer);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep: integer; opa: byte);
 var i, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
@@ -313,7 +314,7 @@ end;
 
 { Draw whole PNG on screen. }
 
-procedure DrawWholePNG(x, y, sx, sy, t, rep, opa: integer);
+procedure DrawWholePNG(x, y, sx, sy, t, rep: integer; opa: byte);
 begin
   DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t,rep,opa);
 end;
@@ -324,6 +325,21 @@ procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
 begin
   incolor := r1 or (g1 shl 8) or (b1 shl 16); // Convert RGB to TColor.
   outcolor := r2 or (g2 shl 8) or (b2 shl 16);
+end;
+
+{ Draw a point-to-point line. }
+
+procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
+var dx, dy, i: integer;
+begin
+  dx := x2-x1;
+  dy := y2-y1;
+  if Abs(dx) < Abs(dy) then // Draw line vertically.
+    for i := 0 to Abs(dy)-1 do
+      DrawPixel(r,g,b,a,x1+((dx*i) div Abs(dy)),y1+(i*Sign(dy)))
+  else // Draw line horizontally.
+    for i := 0 to Abs(dx)-1 do
+      DrawPixel(r,g,b,a,x1+(i*Sign(dx)),y1+((dy*i) div Abs(dx)));
 end;
 
 end.
