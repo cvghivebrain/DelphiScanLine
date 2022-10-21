@@ -19,10 +19,9 @@ procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
-procedure DrawWholePNG(x, y, sx, sy, t: integer);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep, opa: integer);
+procedure DrawWholePNG(x, y, sx, sy, t, rep, opa: integer);
 procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
-procedure ClearPNGReplace;
 
 var
   pic: TImage;
@@ -33,7 +32,7 @@ var
   PNG: TPNGImage;
   alpha: PByteArray;
   alphawidth: integer;
-  alphachk, replacechk: boolean;
+  alphachk: boolean;
   incolor, outcolor: TColor;
 
 implementation
@@ -267,12 +266,18 @@ begin
     alphachk := true;
     end
   else alphachk := false;
-  replacechk := false;
 end;
 
-{ Draw section of PNG on screen. }
+{ Draw section of PNG on screen.
+    x1, y1: Position on PNG
+    w, h: Width/height of section
+    x2, y2: Position on screen
+    sx, sy: Scale (integers only, can be negative)
+    t: Transparency mode (0 = none; 1 = use 0,0 on PNG; 2 = use 0,0 on section; 3 = use alpha channel)
+    rep: Replace colour as defined by SetPNGReplace
+    opa: Opacity (0 = 0%; 255 = 100%) }
 
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep, opa: integer);
 var i, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
@@ -283,19 +288,19 @@ begin
     x := x1+(i mod w); // Get position on PNG.
     y := y1+(i div w);
     p := PNG.Pixels[x,y]; // Get pixel as TColor.
-    if (replacechk = true) and (p = incolor) then p := outcolor; // Replace colour.
+    if (rep = 1) and (p = incolor) then p := outcolor; // Replace colour.
     r := GetRValue(p); // Get RGB values.
     g := GetGValue(p);
     b := GetBValue(p);
     case t of
       1: // Use pixel 0,0 as transparent.
-        if p = p1 then a := 0 else a := 255;
+        if p = p1 then a := 0 else a := opa;
       2: // Use pixel 0,0 in section as transparent.
-        if p = p2 then a := 0 else a := 255;
+        if p = p2 then a := 0 else a := opa;
       3: // Use alpha transparency.
-        if alphachk = true then a := alpha[(y*alphawidth)+x] // Get alpha value.
-        else a := 255;
-      else a := 255; // Default no transparency.
+        if alphachk = true then a := alpha[(y*alphawidth)+x]*(opa div 255) // Get alpha value.
+        else a := opa;
+      else a := opa; // Default no transparency.
     end;
     if sx>0 then xpx := (i mod w)*sx // Set relative position of pixel.
     else xpx := (w-(i mod w))*Abs(sx);
@@ -308,23 +313,17 @@ end;
 
 { Draw whole PNG on screen. }
 
-procedure DrawWholePNG(x, y, sx, sy, t: integer);
+procedure DrawWholePNG(x, y, sx, sy, t, rep, opa: integer);
 begin
-  DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t);
+  DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t,rep,opa);
 end;
 
 { Set colour replacement. Only supports a single colour. }
 
 procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
 begin
-  replacechk := true;
   incolor := r1 or (g1 shl 8) or (b1 shl 16); // Convert RGB to TColor.
   outcolor := r2 or (g2 shl 8) or (b2 shl 16);
-end;
-
-procedure ClearPNGReplace;
-begin
-  replacechk := false;
 end;
 
 end.
