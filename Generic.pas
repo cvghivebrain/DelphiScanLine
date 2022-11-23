@@ -47,6 +47,9 @@ begin
   DrawLine(0,0,0,100,200,20,220,200);
   DrawLine(0,255,255,255,500,500,100,1);
   DrawLine(255,255,255,255,0,0,visiblewidth-50,visibleheight-50);
+  DrawTriangleFlat(255,255,255,128,80,0,10,160,160,0);
+  DrawTriangleFlat(255,255,255,128,400,180,480,520,0,0);
+  DrawTriangle(0,255,0,128,250,0,0,250,500,500);
 end;
 
 end.

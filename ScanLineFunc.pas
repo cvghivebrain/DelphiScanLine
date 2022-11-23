@@ -23,6 +23,8 @@ procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t, rep: integer; opa: byte);
 procedure DrawWholePNG(x, y, sx, sy, t, rep: integer; opa: byte);
 procedure SetPNGReplace(r1, g1, b1, r2, g2, b2: byte);
 procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
+procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
+procedure DrawTriangle(r, g, b, a: byte; x1, y1, x2, y2, x3, y3: integer);
 
 var
   pic: TImage;
@@ -340,6 +342,85 @@ begin
   else // Draw line horizontally.
     for i := 0 to Abs(dx)-1 do
       DrawPixel(r,g,b,a,x1+(i*Sign(dx)),y1+((dy*i) div Abs(dx)));
+end;
+
+{ Draw triangle with flat base. }
+
+procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
+var dx, dy, w, i: integer;
+begin
+  if xleft > xright then // Check if xleft is on the left.
+    begin
+    i := xleft;
+    xleft := xright;
+    xright := i; // Swap xleft and xright if they're the wrong way round.
+    end;
+  dx := xleft-xtop;
+  dy := ybtm-ytop;
+  w := xright-xleft;
+  for i := 0 to Abs(dy)-trim do
+    DrawHLine(r,g,b,a,xtop+((dx*i) div Abs(dy)),ytop+(i*Sign(dy)),(w*i) div Abs(dy));
+end;
+
+{ Draw any triangle. }
+
+procedure DrawTriangle(r, g, b, a: byte; x1, y1, x2, y2, x3, y3: integer);
+var xtop, ytop, xmid, ymid, xbtm, ybtm, xmid2: integer;
+begin
+  if y1 = y2 then DrawTriangleFlat(r,g,b,a,x3,y3,x1,x2,y1,0) // Check if triangle has a flat base.
+  else if y1 = y3 then DrawTriangleFlat(r,g,b,a,x2,y2,x1,x3,y1,0)
+  else if y2 = y3 then DrawTriangleFlat(r,g,b,a,x1,y1,x2,x3,y2,0)
+  else
+    begin
+    if (y1 < y2) and (y1 < y3) then // Find highest vertex.
+      begin
+      ytop := y1;
+      xtop := x1;
+      end
+    else if (y2 < y1) and (y2 < y3) then
+      begin
+      ytop := y2;
+      xtop := x2;
+      end
+    else
+      begin
+      ytop := y3;
+      xtop := x3;
+      end;
+    if (y1 > y2) and (y1 < y3) then // Find middle vertex.
+      begin
+      ymid := y1;
+      xmid := x1;
+      end
+    else if (y2 > y1) and (y2 < y3) then
+      begin
+      ymid := y2;
+      xmid := x2;
+      end
+    else
+      begin
+      ymid := y3;
+      xmid := x3;
+      end;
+    if (y1 > y2) and (y1 > y3) then // Find lowest vertex.
+      begin
+      ybtm := y1;
+      xbtm := x1;
+      end
+    else if (y2 > y1) and (y2 > y3) then
+      begin
+      ybtm := y2;
+      xbtm := x2;
+      end
+    else
+      begin
+      ybtm := y3;
+      xbtm := x3;
+      end;
+    xmid2 := Trunc(xtop+((ymid-ytop)/(ybtm-ytop))*(xbtm-xtop)); // Get middle intersection point.
+    DrawTriangleFlat(r,g,b,a,xtop,ytop,xmid,xmid2,ymid,0); // Draw top triangle.
+    DrawTriangleFlat(r,g,b,a,xbtm,ybtm,xmid,xmid2,ymid,1); // Draw bottom triangle.
+    end;
 end;
 
 end.
