@@ -25,7 +25,7 @@ procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
 procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
 procedure DrawTriangle(r, g, b, a: byte; x1, y1, x2, y2, x3, y3: integer);
 procedure DrawGrid(r, g, b, a: byte; x, y, w, h, cx, cy: integer; outer: boolean);
-procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer);
+procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer; vert: boolean);
 
 var
   pic: TImage;
@@ -120,11 +120,7 @@ begin
     w := w+x; // Trim line.
     x := 0; // Align to edge.
     end;
-  if (y > visibleheight) or (y < 0) then
-    begin
-    w := 0;
-    y := 0;
-    end;
+  if (y > visibleheight) or (y < 0) or (w < 1) then exit; // Do nothing if not visible.
   DrawHLineNow(r,g,b,a,x,y,w); // Draw line with revised position & width.
 end;
 
@@ -135,14 +131,14 @@ var p, i: integer;
 begin
   p := (y*scanwidth)+(x*3); // Find address for pixel.
   if a = 255 then // Check alpha value (255 is opaque).
-    for i := 0 to (w-1) do
+    for i := 0 to w-1 do
       begin
       pixelarray[p+(i*3)] := b; // Write pixel data.
       pixelarray[p+1+(i*3)] := g;
       pixelarray[p+2+(i*3)] := r;
       end
   else
-    for i := 0 to (w-1) do
+    for i := 0 to w-1 do
       begin
       pixelarray[p+(i*3)] := AlphaBlend(b, a, pixelarray[p+(i*3)]); // Write pixel data.
       pixelarray[p+1+(i*3)] := AlphaBlend(g, a, pixelarray[p+1+(i*3)]);
@@ -166,14 +162,10 @@ begin
     h := h+y; // Trim line.
     y := 0; // Align to edge.
     end;
-  if (x > visiblewidth) or (x < 0) then
-    begin
-    h := 0;
-    x := 0;
-    end;
+  if (x > visiblewidth) or (x < 0) or (h < 1) then exit; // Do nothing if not visible.
   p := (y*scanwidth)+(x*3); // Find address for pixel.
   if a = 255 then // Check alpha value (255 is opaque).
-    for i := 0 to (h-1) do
+    for i := 0 to h-1 do
       begin
       pixelarray[p] := b; // Write pixel data.
       pixelarray[p+1] := g;
@@ -181,7 +173,7 @@ begin
       p := p+scanwidth; // Jump to next scanline, same y position.
       end
   else
-    for i := 0 to (h-1) do
+    for i := 0 to h-1 do
       begin
       pixelarray[p] := AlphaBlend(b, a, pixelarray[p]); // Write pixel data.
       pixelarray[p+1] := AlphaBlend(g, a, pixelarray[p+1]);
@@ -207,7 +199,7 @@ begin
     end;
   if x+w > visiblewidth then w := visiblewidth-x; // Trim rectangle if it overflows.
   if y+h > visibleheight then h := visibleheight-y;
-  for i := 0 to (h-1) do DrawHLineNow(r,g,b,a,x,y+i,w); // Draw rectangle out of series of lines.
+  for i := 0 to h-1 do DrawHLineNow(r,g,b,a,x,y+i,w); // Draw rectangle out of series of lines.
 end;
 
 { Draw empty box. }
@@ -251,7 +243,7 @@ procedure FillScreen(r, g, b: byte);
 var i: integer;
 begin
   DrawHLineNow(r, g, b, 255, 0, 0, visiblewidth); // Fill first visible line.
-  for i := 1 to (visibleheight-1) do // Copy visible lines.
+  for i := 1 to visibleheight-1 do // Copy visible lines.
     Move(pixelarray[0],pixelarray[i*scanwidth],(visiblewidth*3));
 end;
 
@@ -262,7 +254,7 @@ begin
   PNG.Free; // Clear previous PNG.
   PNG := TPNGImage.Create; // Initialise PNG.
   PNG.LoadFromFile(f); // Load new PNG.
-  if (PNG.Header.ColorType = COLOR_RGBALPHA) or (PNG.Header.ColorType = COLOR_GRAYSCALEALPHA) then // Check if PNG has an alpha channel.
+  if PNG.Header.ColorType in [COLOR_RGBALPHA, COLOR_GRAYSCALEALPHA] then // Check if PNG has an alpha channel.
     begin
     alpha := PNG.AlphaScanline[0]; // Pointer for alpha channel.
     alphawidth := Longint(PNG.AlphaScanline[1])-Longint(alpha); // Size of alpha for one line.
@@ -280,6 +272,7 @@ end;
     x2, y2: Position on screen
     sx, sy: Scale (integers only, can be negative)
     t: Transparency mode (0 = none; 1 = use 0,0 on PNG; 2 = use 0,0 on section; 3 = use PNG transparency)
+    r_tint, g_tint, b_tint: Darken RGB values (0 = black; 128 = half brightness; 255 = normal)
     opa: Opacity (0 = 0%; 255 = 100%) }
 
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
@@ -307,11 +300,11 @@ begin
         else a := opa;
       else a := opa; // Default no transparency.
     end;
-    if sx>0 then xpx := (i mod w)*sx // Set relative position of pixel.
+    if sx > 0 then xpx := (i mod w)*sx // Set relative position of pixel.
     else xpx := (w-(i mod w))*Abs(sx);
-    if sy>0 then ypx := (i div w)*sy
+    if sy > 0 then ypx := (i div w)*sy
     else ypx := (h-(i div w))*Abs(sy);
-    if (Abs(sx)=1) and (Abs(sy)=1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
+    if (Abs(sx) = 1) and (Abs(sy) = 1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
     else DrawRect(r,g,b,a,x2+xpx,y2+ypx,Abs(sx),Abs(sy));
     end;
 end;
@@ -426,25 +419,36 @@ begin
   cw := w div cx; // Cell width.
   ch := h div cy; // Cell height.
   for i := 1 to cy-1 do
-    DrawLine(r,g,b,a,x+1,y+(i*ch),x+w,y+(i*ch)); // Draw horizontal lines.
+    DrawHLine(r,g,b,a,x+1,y+(i*ch),w); // Draw horizontal lines.
   for i := 0 to cy-1 do
     for j := 1 to cx-1 do
-      DrawLine(r,g,b,a,x+(j*cw),y+(i*ch)+1,x+(j*cw),y+(i*ch)+ch); // Draw vertical lines.
+      DrawVLine(r,g,b,a,x+(j*cw),y+(i*ch)+1,ch-1); // Draw vertical lines.
 end;
 
 { Draw a rectangle with horizontal stripes. }
 
-procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer);
+procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer; vert: boolean);
 var i: integer;
 begin
   i := 0;
-  while i < h do
+  if vert then // Vertical or horizontal stripes.
     begin
-    DrawRect(r1,g1,b1,a1,x,y+i,w,Min(t1,h-i)); // Draw even stripe.
-    i := i+t1;
-    DrawRect(r2,g2,b2,a2,x,y+i,w,Min(t2,h-i)); // Draw odd stripe.
-    i := i+t2;
-    end;
+    while i < w do
+      begin
+      DrawRect(r1,g1,b1,a1,x+i,y,Min(t1,w-i),h); // Draw even stripe.
+      i := i+t1;
+      DrawRect(r2,g2,b2,a2,x+i,y,Min(t2,w-i),h); // Draw odd stripe.
+      i := i+t2;
+      end;
+    end
+  else
+    while i < h do
+      begin
+      DrawRect(r1,g1,b1,a1,x,y+i,w,Min(t1,h-i)); // Draw even stripe.
+      i := i+t1;
+      DrawRect(r2,g2,b2,a2,x,y+i,w,Min(t2,h-i)); // Draw odd stripe.
+      i := i+t2;
+      end;
 end;
 
 end.
