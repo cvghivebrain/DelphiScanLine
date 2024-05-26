@@ -24,6 +24,8 @@ procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: by
 procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
 procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
 procedure DrawTriangle(r, g, b, a: byte; x1, y1, x2, y2, x3, y3: integer);
+procedure DrawGrid(r, g, b, a: byte; x, y, w, h, cx, cy: integer; outer: boolean);
+procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer);
 
 var
   pic: TImage;
@@ -412,6 +414,36 @@ begin
     xmid2 := Trunc(xtop+((ymid-ytop)/(ybtm-ytop))*(xbtm-xtop)); // Get middle intersection point.
     DrawTriangleFlat(r,g,b,a,xtop,ytop,xmid,xmid2,ymid,0); // Draw top triangle.
     DrawTriangleFlat(r,g,b,a,xbtm,ybtm,xmid,xmid2,ymid,1); // Draw bottom triangle.
+    end;
+end;
+
+{ Draw a grid. }
+
+procedure DrawGrid(r, g, b, a: byte; x, y, w, h, cx, cy: integer; outer: boolean);
+var i, j, cw, ch: integer;
+begin
+  if outer then DrawBox(r,g,b,a,x,y,w+1,h+1); // Draw outer box.
+  cw := w div cx; // Cell width.
+  ch := h div cy; // Cell height.
+  for i := 1 to cy-1 do
+    DrawLine(r,g,b,a,x+1,y+(i*ch),x+w,y+(i*ch)); // Draw horizontal lines.
+  for i := 0 to cy-1 do
+    for j := 1 to cx-1 do
+      DrawLine(r,g,b,a,x+(j*cw),y+(i*ch)+1,x+(j*cw),y+(i*ch)+ch); // Draw vertical lines.
+end;
+
+{ Draw a rectangle with horizontal stripes. }
+
+procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer);
+var i: integer;
+begin
+  i := 0;
+  while i < h do
+    begin
+    DrawRect(r1,g1,b1,a1,x,y+i,w,Min(t1,h-i)); // Draw even stripe.
+    i := i+t1;
+    DrawRect(r2,g2,b2,a2,x,y+i,w,Min(t2,h-i)); // Draw odd stripe.
+    i := i+t2;
     end;
 end;
 
