@@ -20,6 +20,7 @@ procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer)
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string);
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
+procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte);
 procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
 procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
 procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
@@ -276,37 +277,92 @@ end;
     opa: Opacity (0 = 0%; 255 = 100%) }
 
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
-var i, r, g, b, a, x, y, xpx, ypx: integer;
+var i, j, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
   p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
   p2 := PNG.Pixels[x1,y1]; // Get pixel on top left of section.
-  for i := 0 to (w*h)-1 do
+  for i := 0 to h-1 do
+    for j := 0 to w-1 do
+      begin
+      x := x1+j; // Get position on PNG.
+      y := y1+i;
+      p := PNG.Pixels[x,y]; // Get pixel as TColor.
+      r := Trunc(GetRValue(p)*(r_tint/255)); // Get RGB values.
+      g := Trunc(GetGValue(p)*(g_tint/255));
+      b := Trunc(GetBValue(p)*(b_tint/255));
+      case t of
+        1: // Use pixel 0,0 as transparent.
+          if p = p1 then a := 0 else a := opa;
+        2: // Use pixel 0,0 in section as transparent.
+          if p = p2 then a := 0 else a := opa;
+        3: // Use alpha transparency.
+          if alphachk then a := Trunc(alpha[(y*alphawidth)+x]*(opa/255)) // Get alpha value.
+          else if (p = PNG.TransparentColor) and singletrans then a := 0 // Check for single-colour transparency.
+          else a := opa;
+        else a := opa; // Default no transparency.
+      end;
+      if sx > 0 then xpx := j*sx // Set relative position of pixel.
+      else xpx := (w-j)*Abs(sx);
+      if sy > 0 then ypx := i*sy
+      else ypx := (h-i)*Abs(sy);
+      if (Abs(sx) = 1) and (Abs(sy) = 1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
+      else DrawRect(r,g,b,a,x2+xpx,y2+ypx,Abs(sx),Abs(sy));
+      end;
+end;
+
+{ Draw section of PNG on screen at any scale.
+    x1, y1: Position on PNG
+    w1, h1: Width/height of section
+    x2, y2: Position on screen
+    w2, h2: Width/height to draw (can be negative)
+    t: Transparency mode (0 = none; 1 = use 0,0 on PNG; 2 = use 0,0 on section; 3 = use PNG transparency)
+    r_tint, g_tint, b_tint: Darken RGB values (0 = black; 128 = half brightness; 255 = normal)
+    opa: Opacity (0 = 0%; 255 = 100%) }
+
+procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte);
+var i, j, r, g, b, a, x, y, xpx, ypx: integer;
+  p, p1, p2: TColor;
+  xflip, yflip: boolean;
+begin
+  p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
+  p2 := PNG.Pixels[x1,y1]; // Get pixel on top left of section.
+  if w2 < 0 then
     begin
-    x := x1+(i mod w); // Get position on PNG.
-    y := y1+(i div w);
-    p := PNG.Pixels[x,y]; // Get pixel as TColor.
-    r := Trunc(GetRValue(p)*(r_tint/255)); // Get RGB values.
-    g := Trunc(GetGValue(p)*(g_tint/255));
-    b := Trunc(GetBValue(p)*(b_tint/255));
-    case t of
-      1: // Use pixel 0,0 as transparent.
-        if p = p1 then a := 0 else a := opa;
-      2: // Use pixel 0,0 in section as transparent.
-        if p = p2 then a := 0 else a := opa;
-      3: // Use alpha transparency.
-        if alphachk then a := Trunc(alpha[(y*alphawidth)+x]*(opa/255)) // Get alpha value.
-        else if (p = PNG.TransparentColor) and singletrans then a := 0 // Check for single-colour transparency.
-        else a := opa;
-      else a := opa; // Default no transparency.
-    end;
-    if sx > 0 then xpx := (i mod w)*sx // Set relative position of pixel.
-    else xpx := (w-(i mod w))*Abs(sx);
-    if sy > 0 then ypx := (i div w)*sy
-    else ypx := (h-(i div w))*Abs(sy);
-    if (Abs(sx) = 1) and (Abs(sy) = 1) then DrawPixel(r,g,b,a,x2+xpx,y2+ypx)
-    else DrawRect(r,g,b,a,x2+xpx,y2+ypx,Abs(sx),Abs(sy));
-    end;
+    w2 := -w2;
+    xflip := true; // xflip if width is negative.
+    end
+  else xflip := false;
+  if h2 < 0 then
+    begin
+    h2 := -h2;
+    yflip := true; // yflip if height is negative.
+    end
+  else yflip := false;
+  for i := 0 to h2-1 do
+    for j := 0 to w2-1 do
+      begin
+      x := x1+Trunc((j/w2)*w1); // Get position on PNG.
+      y := y1+Trunc((i/h2)*h1);
+      p := PNG.Pixels[x,y]; // Get pixel as TColor.
+      r := Trunc(GetRValue(p)*(r_tint/255)); // Get RGB values.
+      g := Trunc(GetGValue(p)*(g_tint/255));
+      b := Trunc(GetBValue(p)*(b_tint/255));
+      case t of
+        1: // Use pixel 0,0 as transparent.
+          if p = p1 then a := 0 else a := opa;
+        2: // Use pixel 0,0 in section as transparent.
+          if p = p2 then a := 0 else a := opa;
+        3: // Use alpha transparency.
+          if alphachk then a := Trunc(alpha[(y*alphawidth)+x]*(opa/255)) // Get alpha value.
+          else if (p = PNG.TransparentColor) and singletrans then a := 0 // Check for single-colour transparency.
+          else a := opa;
+        else a := opa; // Default no transparency.
+      end;
+      if not xflip then xpx := j else xpx := w2-j;
+      if not yflip then ypx := i else ypx := h2-i;
+      DrawPixel(r,g,b,a,x2+xpx,y2+ypx);
+      end;
 end;
 
 { Draw whole PNG on screen. }

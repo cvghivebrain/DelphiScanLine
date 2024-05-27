@@ -51,6 +51,7 @@ begin
   DrawTriangle(0,255,0,128,250,0,0,250,500,500);
   DrawRectStriped(0,0,0,255,255,255,255,255,600,0,100,100,12,17,true);
   DrawGrid(255,255,255,128,0,0,200,200,10,10,true);
+  DrawScaledPNG(0,0,80,80,100,100,-visiblewidth div 5,-visibleheight div 2,1,255,255,255,255);
 end;
 
 end.
