@@ -18,10 +18,10 @@ procedure DrawBoxFill(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h: integer);
 procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
-procedure LoadSheet(f: string);
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
-procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte);
-procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
+procedure LoadSheet(f: string; pngid: integer = 0);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
+procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
+procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 procedure DrawLine(r, g, b, a: byte; x1, y1, x2, y2: integer);
 procedure DrawTriangleFlat(r, g, b, a: byte; xtop, ytop, xleft, xright, ybtm, trim: integer);
 procedure DrawTriangle(r, g, b, a: byte; x1, y1, x2, y2, x3, y3: integer);
@@ -34,10 +34,10 @@ var
   pixelarray: PByteArray;
   scanwidth, actualwidth, actualheight, visiblewidth, visibleheight: integer;
   readpixel: array[0..2] of byte;
-  PNG: TPNGImage;
-  alpha: PByteArray;
-  alphawidth: integer;
-  alphachk, singletrans: boolean;
+  PNG: array of TPNGImage;
+  alpha: array of PByteArray;
+  alphawidth: array of integer;
+  alphachk, singletrans: array of boolean;
 
 implementation
 
@@ -250,21 +250,29 @@ end;
 
 { Load PNG. }
 
-procedure LoadSheet(f: string);
+procedure LoadSheet(f: string; pngid: integer = 0);
 begin
-  PNG.Free; // Clear previous PNG.
-  PNG := TPNGImage.Create; // Initialise PNG.
-  PNG.LoadFromFile(f); // Load new PNG.
-  if PNG.Header.ColorType in [COLOR_RGBALPHA, COLOR_GRAYSCALEALPHA] then // Check if PNG has an alpha channel.
+  if Length(PNG) < pngid+1 then
     begin
-    alpha := PNG.AlphaScanline[0]; // Pointer for alpha channel.
-    alphawidth := Longint(PNG.AlphaScanline[1])-Longint(alpha); // Size of alpha for one line.
-    alphachk := true;
+    SetLength(PNG,pngid+1);
+    SetLength(alpha,pngid+1);
+    SetLength(alphawidth,pngid+1);
+    SetLength(alphachk,pngid+1);
+    SetLength(singletrans,pngid+1);
+    end;
+  PNG[pngid].Free; // Clear previous PNG.
+  PNG[pngid] := TPNGImage.Create; // Initialise PNG.
+  PNG[pngid].LoadFromFile(f); // Load new PNG.
+  if PNG[pngid].Header.ColorType in [COLOR_RGBALPHA, COLOR_GRAYSCALEALPHA] then // Check if PNG has an alpha channel.
+    begin
+    alpha[pngid] := PNG[pngid].AlphaScanline[0]; // Pointer for alpha channel.
+    alphawidth[pngid] := Longint(PNG[pngid].AlphaScanline[1])-Longint(alpha[pngid]); // Size of alpha for one line.
+    alphachk[pngid] := true;
     end
-  else alphachk := false;
-  if (PNG.Header.ColorType = COLOR_PALETTE) and (PNG.TransparencyMode = ptmBit) then // Check if PNG has indexed transparency.
-    singletrans := true
-  else singletrans := false;
+  else alphachk[pngid] := false;
+  if (PNG[pngid].Header.ColorType = COLOR_PALETTE) and (PNG[pngid].TransparencyMode = ptmBit) then // Check if PNG has indexed transparency.
+    singletrans[pngid] := true
+  else singletrans[pngid] := false;
 end;
 
 { Draw section of PNG on screen.
@@ -276,18 +284,18 @@ end;
     r_tint, g_tint, b_tint: Darken RGB values (0 = black; 128 = half brightness; 255 = normal)
     opa: Opacity (0 = 0%; 255 = 100%) }
 
-procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
+procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 var i, j, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
-  p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
-  p2 := PNG.Pixels[x1,y1]; // Get pixel on top left of section.
+  p1 := PNG[pngid].Pixels[0,0]; // Get pixel on top left of image.
+  p2 := PNG[pngid].Pixels[x1,y1]; // Get pixel on top left of section.
   for i := 0 to h-1 do
     for j := 0 to w-1 do
       begin
       x := x1+j; // Get position on PNG.
       y := y1+i;
-      p := PNG.Pixels[x,y]; // Get pixel as TColor.
+      p := PNG[pngid].Pixels[x,y]; // Get pixel as TColor.
       r := Trunc(GetRValue(p)*(r_tint/255)); // Get RGB values.
       g := Trunc(GetGValue(p)*(g_tint/255));
       b := Trunc(GetBValue(p)*(b_tint/255));
@@ -297,8 +305,8 @@ begin
         2: // Use pixel 0,0 in section as transparent.
           if p = p2 then a := 0 else a := opa;
         3: // Use alpha transparency.
-          if alphachk then a := Trunc(alpha[(y*alphawidth)+x]*(opa/255)) // Get alpha value.
-          else if (p = PNG.TransparentColor) and singletrans then a := 0 // Check for single-colour transparency.
+          if alphachk[pngid] then a := Trunc(alpha[pngid][(y*alphawidth[pngid])+x]*(opa/255)) // Get alpha value.
+          else if (p = PNG[pngid].TransparentColor) and singletrans[pngid] then a := 0 // Check for single-colour transparency.
           else a := opa;
         else a := opa; // Default no transparency.
       end;
@@ -320,13 +328,13 @@ end;
     r_tint, g_tint, b_tint: Darken RGB values (0 = black; 128 = half brightness; 255 = normal)
     opa: Opacity (0 = 0%; 255 = 100%) }
 
-procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte);
+procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 var i, j, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
   xflip, yflip: boolean;
 begin
-  p1 := PNG.Pixels[0,0]; // Get pixel on top left of image.
-  p2 := PNG.Pixels[x1,y1]; // Get pixel on top left of section.
+  p1 := PNG[pngid].Pixels[0,0]; // Get pixel on top left of image.
+  p2 := PNG[pngid].Pixels[x1,y1]; // Get pixel on top left of section.
   if w2 < 0 then
     begin
     w2 := -w2;
@@ -344,7 +352,7 @@ begin
       begin
       x := x1+Trunc((j/w2)*w1); // Get position on PNG.
       y := y1+Trunc((i/h2)*h1);
-      p := PNG.Pixels[x,y]; // Get pixel as TColor.
+      p := PNG[pngid].Pixels[x,y]; // Get pixel as TColor.
       r := Trunc(GetRValue(p)*(r_tint/255)); // Get RGB values.
       g := Trunc(GetGValue(p)*(g_tint/255));
       b := Trunc(GetBValue(p)*(b_tint/255));
@@ -354,8 +362,8 @@ begin
         2: // Use pixel 0,0 in section as transparent.
           if p = p2 then a := 0 else a := opa;
         3: // Use alpha transparency.
-          if alphachk then a := Trunc(alpha[(y*alphawidth)+x]*(opa/255)) // Get alpha value.
-          else if (p = PNG.TransparentColor) and singletrans then a := 0 // Check for single-colour transparency.
+          if alphachk[pngid] then a := Trunc(alpha[pngid][(y*alphawidth[pngid])+x]*(opa/255)) // Get alpha value.
+          else if (p = PNG[pngid].TransparentColor) and singletrans[pngid] then a := 0 // Check for single-colour transparency.
           else a := opa;
         else a := opa; // Default no transparency.
       end;
@@ -367,9 +375,9 @@ end;
 
 { Draw whole PNG on screen. }
 
-procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte);
+procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 begin
-  DrawPNG(0,0,PNG.Width,PNG.Height,x,y,sx,sy,t,opa,r_tint,g_tint,b_tint);
+  DrawPNG(0,0,PNG[pngid].Width,PNG[pngid].Height,x,y,sx,sy,t,opa,r_tint,g_tint,b_tint);
 end;
 
 { Draw a point-to-point line. }
@@ -481,7 +489,7 @@ begin
       DrawVLine(r,g,b,a,x+(j*cw),y+(i*ch)+1,ch-1); // Draw vertical lines.
 end;
 
-{ Draw a rectangle with horizontal stripes. }
+{ Draw a rectangle with stripes. }
 
 procedure DrawRectStriped(r1, g1, b1, a1, r2, g2, b2, a2: byte; x, y, w, h, t1, t2: integer; vert: boolean);
 var i: integer;
