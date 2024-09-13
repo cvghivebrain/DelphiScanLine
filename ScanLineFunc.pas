@@ -288,6 +288,7 @@ procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint,
 var i, j, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
 begin
+  if Length(PNG) < pngid+1 then exit;
   p1 := PNG[pngid].Pixels[0,0]; // Get pixel on top left of image.
   p2 := PNG[pngid].Pixels[x1,y1]; // Get pixel on top left of section.
   for i := 0 to h-1 do
@@ -333,6 +334,7 @@ var i, j, r, g, b, a, x, y, xpx, ypx: integer;
   p, p1, p2: TColor;
   xflip, yflip: boolean;
 begin
+  if Length(PNG) < pngid+1 then exit;
   p1 := PNG[pngid].Pixels[0,0]; // Get pixel on top left of image.
   p2 := PNG[pngid].Pixels[x1,y1]; // Get pixel on top left of section.
   if w2 < 0 then
@@ -377,6 +379,7 @@ end;
 
 procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 begin
+  if Length(PNG) < pngid+1 then exit;
   DrawPNG(0,0,PNG[pngid].Width,PNG[pngid].Height,x,y,sx,sy,t,opa,r_tint,g_tint,b_tint);
 end;
 
