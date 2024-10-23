@@ -101,6 +101,10 @@
             <Form>Form1</Form>
         </DCCReference>
         <DCCReference Include="ScanLineFunc.pas"/>
+        <RcItem Include="tails.png">
+            <ResourceType>RCDATA</ResourceType>
+            <ResourceId>tailsimg</ResourceId>
+        </RcItem>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -128,6 +132,18 @@
             </Platforms>
             <Deployment Version="4">
                 <DeployFile LocalName="Project1.exe" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="Project1.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>Project1.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="tails.png" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="iOSSimulator">
                         <Operation>1</Operation>

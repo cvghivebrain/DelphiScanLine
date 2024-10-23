@@ -2,7 +2,7 @@ unit ScanLineFunc;
 
 interface
 
-uses Forms, Graphics, ExtCtrls, SysUtils, pngimage, Windows, Math;
+uses Forms, Graphics, ExtCtrls, SysUtils, pngimage, Windows, Math, Classes;
 
 procedure InitImage(frm: TForm; img: TImage);
 procedure MatchWindow;
@@ -19,6 +19,7 @@ procedure DrawBox2(r, g, b, a: byte; x, y, w, h, t: integer);
 procedure DrawBoxFill2(r, g, b, a, r2, g2, b2, a2: byte; x, y, w, h, t: integer);
 procedure FillScreen(r, g, b: byte);
 procedure LoadSheet(f: string; pngid: integer = 0);
+procedure LoadRes(r: string; pngid: integer = 0);
 procedure DrawPNG(x1, y1, w, h, x2, y2, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 procedure DrawScaledPNG(x1, y1, w1, h1, x2, y2, w2, h2, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
@@ -250,19 +251,22 @@ end;
 
 { Load PNG. }
 
-procedure LoadSheet(f: string; pngid: integer = 0);
+procedure InitNewPNG(pngid: integer);
 begin
-  if Length(PNG) < pngid+1 then
+  if Length(PNG) < pngid+1 then // Check if PNG slot already exists.
     begin
-    SetLength(PNG,pngid+1);
-    SetLength(alpha,pngid+1);
+    SetLength(PNG,pngid+1); // Create new slot.
+    SetLength(alpha,pngid+1); // Create alpha channel.
     SetLength(alphawidth,pngid+1);
     SetLength(alphachk,pngid+1);
     SetLength(singletrans,pngid+1);
     end;
   PNG[pngid].Free; // Clear previous PNG.
   PNG[pngid] := TPNGImage.Create; // Initialise PNG.
-  PNG[pngid].LoadFromFile(f); // Load new PNG.
+end;
+
+procedure InitNewAlpha(pngid: integer);
+begin
   if PNG[pngid].Header.ColorType in [COLOR_RGBALPHA, COLOR_GRAYSCALEALPHA] then // Check if PNG has an alpha channel.
     begin
     alpha[pngid] := PNG[pngid].AlphaScanline[0]; // Pointer for alpha channel.
@@ -273,6 +277,23 @@ begin
   if (PNG[pngid].Header.ColorType = COLOR_PALETTE) and (PNG[pngid].TransparencyMode = ptmBit) then // Check if PNG has indexed transparency.
     singletrans[pngid] := true
   else singletrans[pngid] := false;
+end;
+
+procedure LoadSheet(f: string; pngid: integer = 0);
+begin
+  InitNewPNG(pngid); // Initialise PNG.
+  PNG[pngid].LoadFromFile(f); // Load new PNG.
+  InitNewAlpha(pngid); // Initialise alpha channel.
+end;
+
+procedure LoadRes(r: string; pngid: integer = 0);
+var ResStream: TResourceStream;
+begin
+  InitNewPNG(pngid); // Initialise PNG.
+  ResStream := TResourceStream.Create(HInstance, r, RT_RCDATA);
+  PNG[pngid].LoadFromStream(ResStream); // Load from resource.
+  ResStream.Free;
+  InitNewAlpha(pngid); // Initialise alpha channel.
 end;
 
 { Draw section of PNG on screen.
@@ -380,7 +401,7 @@ end;
 procedure DrawWholePNG(x, y, sx, sy, t: integer; opa, r_tint, g_tint, b_tint: byte; pngid: integer = 0);
 begin
   if Length(PNG) < pngid+1 then exit;
-  DrawPNG(0,0,PNG[pngid].Width,PNG[pngid].Height,x,y,sx,sy,t,opa,r_tint,g_tint,b_tint);
+  DrawPNG(0,0,PNG[pngid].Width,PNG[pngid].Height,x,y,sx,sy,t,opa,r_tint,g_tint,b_tint,pngid);
 end;
 
 { Draw a point-to-point line. }

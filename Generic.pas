@@ -29,6 +29,7 @@ begin
   InitImage(Form1,imgMain); // Set image width & height to match form.
   FillScreen(0,0,0);
   LoadSheet('test.png');
+  LoadRes('tailsimg',1);
 end;
 
 procedure TForm1.FormResize(Sender: TObject);
@@ -52,6 +53,7 @@ begin
   DrawRectStriped(0,0,0,255,255,255,255,255,600,0,100,100,12,17,true);
   DrawGrid(255,255,255,128,0,0,200,200,10,10,true);
   DrawScaledPNG(0,0,80,80,100,100,-visiblewidth div 5,-visibleheight div 2,1,255,255,255,255);
+  DrawWholePNG(300,200,1,1,3,255,255,255,255,1);
 end;
 
 end.

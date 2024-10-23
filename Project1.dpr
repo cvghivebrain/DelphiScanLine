@@ -1,5 +1,7 @@
 program Project1;
 
+{$R *.dres}
+
 uses
   Forms,
   Generic in 'Generic.pas' {Form1},
